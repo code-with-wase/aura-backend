@@ -1,5 +1,5 @@
 {
-  "name": "aura-backend-empty-structure",
+  "name": "aura-backend",
   "version": "1.0.0",
   "description": "Backend for Aura Connect",
   "main": "index.js",

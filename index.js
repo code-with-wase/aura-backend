@@ -9,6 +9,9 @@ import authRoutes from "./src/routes/authRoutes.js";
 import userRoutes from "./src/routes/userRoutes.js";
 import chatRoutes from "./src/routes/chatRoutes.js";
 import messageRoutes from "./src/routes/messageRoutes.js";
+import groupRoutes from "./src/routes/groupRoutes.js";
+import statusRoutes from "./src/routes/statusRoutes.js";
+import callRoutes from "./src/routes/callRoutes.js";
 
 import {
   generalRateLimiter,
@@ -83,6 +86,9 @@ app.use("/auth", authRoutes);
 app.use("/user", userRoutes);
 app.use("/chat", chatRoutes);
 app.use("/message", messageRoutes);
+app.use("/group", groupRoutes);
+app.use("/status", statusRoutes);
+app.use("/call", callRoutes);
 
 
 // =========================

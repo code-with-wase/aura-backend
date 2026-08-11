@@ -152,10 +152,6 @@ statusSchema.index({
 });
 
 statusSchema.index({
-  expiresAt: 1,
-});
-
-statusSchema.index({
   "viewers.user": 1,
 });
 

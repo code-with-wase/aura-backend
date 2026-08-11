@@ -12,8 +12,9 @@ import messageRoutes from "./src/routes/messageRoutes.js";
 import groupRoutes from "./src/routes/groupRoutes.js";
 import statusRoutes from "./src/routes/statusRoutes.js";
 import callRoutes from "./src/routes/callRoutes.js";
+import uploadRoutes from "./src/routes/uploadRoutes.js";
 
-import {
+import {    
   generalRateLimiter,
 } from "./src/middleware/rateLimitMiddleware.js";
 
@@ -89,6 +90,7 @@ app.use("/message", messageRoutes);
 app.use("/group", groupRoutes);
 app.use("/status", statusRoutes);
 app.use("/call", callRoutes);
+app.use("/upload", uploadRoutes);
 
 
 // =========================

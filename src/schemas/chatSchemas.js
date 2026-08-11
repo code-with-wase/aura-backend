@@ -50,3 +50,4 @@ export const updateChatSettingsSchema = z.object({
     isPinned: z.boolean().optional(),
   }),
 });  
+

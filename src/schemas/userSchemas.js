@@ -11,7 +11,7 @@ export const updateProfileSchema = z.object({
       name: z
         .string()
         .trim()
-        .min(  
+        .min(   
           2,
           "Name must be at least 2 characters"
         )

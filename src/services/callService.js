@@ -679,7 +679,7 @@ export const endCall = async ({
       "completed",
       "rejected",
       "missed",
-      "cancelled",
+      "cancelled",  
     ].includes(call.status)
   ) {
     throw new Error(

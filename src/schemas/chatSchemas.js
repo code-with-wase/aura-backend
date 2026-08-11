@@ -49,4 +49,4 @@ export const updateChatSettingsSchema = z.object({
     isArchived: z.boolean().optional(),
     isPinned: z.boolean().optional(),
   }),
-});
+});  

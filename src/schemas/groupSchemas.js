@@ -210,4 +210,4 @@ export const muteGroupSchema =
     body: z.object({
       isMuted: z.boolean(),
     }),
-  }); 
+  });   

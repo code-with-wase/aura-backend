@@ -2,9 +2,6 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 
-import http from "http"; 
-import { initializeSocket } from "./src/sockets/socket.js";
-
 import connectDB from "./src/config/db.js";
 import connectCloudinary from "./src/config/cloudinary.js";
 
@@ -19,7 +16,7 @@ import uploadRoutes from "./src/routes/uploadRoutes.js";
 import notificationRoutes from "./src/routes/notificationRoutes.js";
 import contactRoutes from "./src/routes/contactRoutes.js";
 
-import {     
+import {
   generalRateLimiter,
 } from "./src/middleware/rateLimitMiddleware.js";
 
@@ -27,26 +24,48 @@ import { errorMiddleware } from "./src/middleware/errorMiddleware.js";
 
 import { logger } from "./src/utils/logger.js";
 
-
-// =========================
-// LOAD ENVIRONMENT VARIABLES
-// =========================
+// =====================================================
+// ENVIRONMENT
+// =====================================================
 
 dotenv.config();
 
-
-// =========================
-// CREATE EXPRESS APP
-// =========================
+// =====================================================
+// EXPRESS APP
+// =====================================================
 
 const app = express();
 
+// =====================================================
+// APP INITIALIZATION CACHE
+// =====================================================
 
-// =========================
-// GLOBAL MIDDLEWARE
-// =========================
+let initializationPromise = null;
 
+const initializeApp = async () => {
+  if (!initializationPromise) {
+    initializationPromise = Promise.all([
+      connectDB(),
+      Promise.resolve(connectCloudinary()),
+    ]).then(() => {
+      logger.success(
+        "Aura Connect API initialized successfully"
+      );
+    });
+  }
+
+  try {
+    await initializationPromise;
+  } catch (error) {
+    initializationPromise = null;
+    throw error;
+  }
+};
+
+// =====================================================
 // CORS
+// =====================================================
+
 app.use(
   cors({
     origin: true,
@@ -54,8 +73,15 @@ app.use(
   })
 );
 
-// Request body
-app.use(express.json({ limit: "10mb" }));
+// =====================================================
+// BODY PARSER
+// =====================================================
+
+app.use(
+  express.json({
+    limit: "10mb",
+  })
+);
 
 app.use(
   express.urlencoded({
@@ -64,29 +90,40 @@ app.use(
   })
 );
 
-
-// =========================
-// GENERAL RATE LIMITER
-// =========================
+// =====================================================
+// RATE LIMITER
+// =====================================================
 
 app.use(generalRateLimiter);
 
+// =====================================================
+// DATABASE INITIALIZATION MIDDLEWARE
+// =====================================================
 
-// =========================
+app.use(async (req, res, next) => {
+  try {
+    await initializeApp();
+    next();
+  } catch (error) {
+    next(error);
+  }
+});
+
+// =====================================================
 // HEALTH CHECK
-// =========================
+// =====================================================
 
 app.get("/", (req, res) => {
-  res.status(200).json({
+  return res.status(200).json({
     success: true,
     message: "Aura Connect API is running",
+    environment: process.env.NODE_ENV || "development",
   });
 });
 
-
-// =========================
+// =====================================================
 // API ROUTES
-// =========================
+// =====================================================
 
 app.use("/auth", authRoutes);
 app.use("/user", userRoutes);
@@ -99,90 +136,25 @@ app.use("/upload", uploadRoutes);
 app.use("/notification", notificationRoutes);
 app.use("/contact", contactRoutes);
 
-
-// =========================
-// 404 ROUTE
-// =========================
+// =====================================================
+// 404
+// =====================================================
 
 app.use((req, res) => {
-  res.status(404).json({
+  return res.status(404).json({
     success: false,
     message: `Route not found: ${req.method} ${req.originalUrl}`,
   });
 });
 
-
-// =========================
+// =====================================================
 // GLOBAL ERROR HANDLER
-// =========================
+// =====================================================
 
 app.use(errorMiddleware);
 
+// =====================================================
+// VERCEL EXPORT
+// =====================================================
 
-// =========================
-// SERVER PORT
-// =========================
-
-const PORT = process.env.PORT || 5000;
-
-
-// =========================
-// START SERVER
-// =========================
-
-const startServer = async () => {
-  try {
-    // =====================================================
-    // CONNECT MONGODB
-    // =====================================================
-
-    await connectDB();
-
-    // =====================================================
-    // CONFIGURE CLOUDINARY
-    // =====================================================
-
-    connectCloudinary();
-
-    // =====================================================
-    // CREATE HTTP SERVER
-    // =====================================================
-
-    const server = http.createServer(app);
-
-    // =====================================================
-    // INITIALIZE SOCKET.IO
-    // =====================================================
-
-    initializeSocket(server);
-
-    // =====================================================
-    // START SERVER
-    // =====================================================
-
-    server.listen(PORT, () => {
-      logger.success(
-        `Aura Connect server running on port ${PORT}`
-      );
-
-      logger.info(
-        `Environment: ${
-          process.env.NODE_ENV || "development"
-        }`
-      );
-    });
-  } catch (error) {
-    logger.error(
-      "Server startup failed",
-      error
-    );
-
-    process.exit(1);
-  }
-};
-
-// =========================
-// START APPLICATION
-// =========================
- 
-startServer();
+export default app;  

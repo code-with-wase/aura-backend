@@ -15,6 +15,8 @@ import callRoutes from "./src/routes/callRoutes.js";
 import uploadRoutes from "./src/routes/uploadRoutes.js";
 import notificationRoutes from "./src/routes/notificationRoutes.js";
 import contactRoutes from "./src/routes/contactRoutes.js";
+import dns from 'dns';
+dns.setServers(["1.1.1.1","8.8.8.8"]);
 
 import {
   generalRateLimiter,
@@ -157,4 +159,30 @@ app.use(errorMiddleware);
 // VERCEL EXPORT
 // =====================================================
 
-export default app;  
+
+// =====================================================
+// LOCAL SERVER
+// =====================================================
+
+const PORT = process.env.PORT || 5000;
+
+if (process.env.NODE_ENV !== "production") {
+  initializeApp()
+    .then(() => {
+      app.listen(PORT, () => {
+        console.log(`Aura Connect API running on port ${PORT}`);
+        console.log(`http://localhost:${PORT}`);
+      });
+    })
+    .catch((error) => {
+      console.error("Application initialization failed:");
+      console.error(error);
+      process.exit(1);
+    });
+}
+
+// =====================================================
+// VERCEL EXPORT
+// =====================================================
+
+export default app;    

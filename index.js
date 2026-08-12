@@ -17,6 +17,7 @@ import statusRoutes from "./src/routes/statusRoutes.js";
 import callRoutes from "./src/routes/callRoutes.js";
 import uploadRoutes from "./src/routes/uploadRoutes.js";
 import notificationRoutes from "./src/routes/notificationRoutes.js";
+import contactRoutes from "./src/routes/contactRoutes.js";
 
 import {     
   generalRateLimiter,
@@ -96,6 +97,7 @@ app.use("/status", statusRoutes);
 app.use("/call", callRoutes);
 app.use("/upload", uploadRoutes);
 app.use("/notification", notificationRoutes);
+app.use("/contact", contactRoutes);
 
 
 // =========================

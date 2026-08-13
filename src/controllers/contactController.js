@@ -7,6 +7,7 @@ import {
   unblockUser as unblockUserService,
   getBlockedUsers as getBlockedUsersService,
   getBlockStatus as getBlockStatusService,
+  syncPhoneContacts as syncPhoneContactsService,
 } from "../services/contactService.js";
 
 import {
@@ -39,6 +40,38 @@ export const searchUsers = async (
       res,
       200,
       "Users fetched successfully",
+      result
+    );
+  } catch (error) {
+    return next(error);
+  }
+};
+
+// =====================================================
+// SYNC / MATCH PHONE CONTACTS
+// =====================================================
+
+export const syncPhoneContacts = async (
+  req,
+  res,
+  next
+) => {
+  try {
+    const body =
+      req.validatedData?.body ||
+      req.body;
+
+    const result =
+      await syncPhoneContactsService({
+        userId: req.user._id,
+        phoneNumbers:
+          body.phoneNumbers,
+      });
+
+    return successResponse(
+      res,
+      200,
+      "Phone contacts synced successfully",
       result
     );
   } catch (error) {
@@ -267,4 +300,4 @@ export const getBlockStatus = async (
   } catch (error) {
     return next(error);
   }
-};  
+}; 

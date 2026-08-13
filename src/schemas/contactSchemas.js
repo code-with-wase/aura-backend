@@ -75,6 +75,38 @@ export const getContactsSchema = z.object({
 });
 
 // =====================================================
+// SYNC / MATCH PHONE CONTACTS
+// POST /contact/sync
+// =====================================================
+
+export const syncPhoneContactsSchema = z.object({
+  body: z.object({
+    phoneNumbers: z
+      .array(
+        z
+          .string()
+          .trim()
+          .min(
+            3,
+            "Invalid phone number"
+          )
+          .max(
+            30,
+            "Phone number cannot exceed 30 characters"
+          )
+      )
+      .min(
+        1,
+        "At least one phone number is required"
+      )
+      .max(
+        5000,
+        "You can sync a maximum of 5000 phone contacts at once"
+      ),
+  }),
+});
+
+// =====================================================
 // ADD CONTACT
 // POST /contact/:userId
 // =====================================================

@@ -44,6 +44,24 @@ const userSchema = new mongoose.Schema(
         },
 
         // =========================
+        // NORMALIZED PHONE
+        // =========================
+        //
+        // Used for reliable phone-contact matching.
+        //
+        // Example:
+        // +91 98765 43210
+        //       ↓
+        // 919876543210
+
+        phoneNormalized: {
+            type: String,
+            unique: true,
+            sparse: true,
+            trim: true,
+        },
+
+        // =========================
         // AUTHENTICATION
         // =========================
 
@@ -132,6 +150,26 @@ const userSchema = new mongoose.Schema(
     }
 );
 
+// =====================================================
+// INDEXES
+// =====================================================
+
+// Existing phone field remains unique.
+userSchema.index({
+    phone: 1,
+});
+
+// Normalized phone lookup.
+userSchema.index(
+    {
+        phoneNormalized: 1,
+    },
+    {
+        unique: true,
+        sparse: true,
+    }
+);
+
 const User = mongoose.model("User", userSchema);
 
-export default User;
+export default User; 

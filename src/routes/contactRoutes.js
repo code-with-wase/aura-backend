@@ -2,6 +2,7 @@ import express from "express";
 
 import {
   searchUsers,
+  syncPhoneContacts,
   getContacts,
   addContact,
   removeContact,
@@ -26,6 +27,7 @@ import {
   addContactSchema,
   removeContactSchema,
   blockContactSchema,
+  syncPhoneContactsSchema,
 } from "../schemas/contactSchemas.js";
 
 const router = express.Router();
@@ -45,6 +47,21 @@ router.get(
   "/search",
   validate(searchContactsSchema),
   searchUsers
+);
+
+// =====================================================
+// SYNC / MATCH PHONE CONTACTS
+// POST /contact/sync
+// =====================================================
+//
+// IMPORTANT:
+// This route must stay BEFORE /:userId
+// so "sync" is not treated as a userId.
+
+router.post(
+  "/sync",
+  validate(syncPhoneContactsSchema),
+  syncPhoneContacts
 );
 
 // =====================================================

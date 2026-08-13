@@ -13,6 +13,10 @@ import {
   generateRefreshToken,
 } from "../utils/generateToken.js";
 
+import {
+  normalizePhone,
+} from "../utils/normalizePhone.js";
+
 
 // =========================
 // REGISTER USER
@@ -38,6 +42,20 @@ export const registerUser = async ({
 
   const normalizedPhone =
     phone.trim();
+
+  // =========================
+  // NORMALIZE PHONE FOR
+  // CONTACT MATCHING
+  // =========================
+
+  const normalizedPhoneNumber =
+    normalizePhone(normalizedPhone);
+
+  if (!normalizedPhoneNumber) {
+    throw new Error(
+      "Valid phone number is required"
+    );
+  }
 
 
   // =========================
@@ -86,6 +104,34 @@ export const registerUser = async ({
 
 
   // =========================
+  // CHECK NORMALIZED PHONE
+  // =========================
+  //
+  // This prevents the same Indian number
+  // from being registered in different formats.
+  //
+  // Example:
+  // +91 98765 43210
+  // 919876543210
+  // 9876543210
+  //
+  // All become:
+  // 919876543210
+
+  const existingNormalizedPhone =
+    await User.findOne({
+      phoneNormalized:
+        normalizedPhoneNumber,
+    });
+
+  if (existingNormalizedPhone) {
+    throw new Error(
+      "Phone number is already registered"
+    );
+  }
+
+
+  // =========================
   // HASH PASSWORD
   // =========================
 
@@ -102,6 +148,12 @@ export const registerUser = async ({
     username: normalizedUsername,
     email: normalizedEmail,
     phone: normalizedPhone,
+
+    // Used by WhatsApp-style
+    // phone contact matching.
+    phoneNormalized:
+      normalizedPhoneNumber,
+
     password: hashedPassword,
   });
 
@@ -393,4 +445,4 @@ export const logoutUser = async (
 
 
   return true;
-};
+};  

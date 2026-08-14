@@ -5,7 +5,7 @@ const userSchema = new mongoose.Schema(
         // =========================
         // BASIC USER INFORMATION
         // =========================
-
+ 
         name: {
             type: String,
             required: [true, "Name is required"],
@@ -147,26 +147,6 @@ const userSchema = new mongoose.Schema(
     },
     {
         timestamps: true,
-    }
-);
-
-// =====================================================
-// INDEXES
-// =====================================================
-
-// Existing phone field remains unique.
-userSchema.index({
-    phone: 1,
-});
-
-// Normalized phone lookup.
-userSchema.index(
-    {
-        phoneNormalized: 1,
-    },
-    {
-        unique: true,
-        sparse: true,
     }
 );
 

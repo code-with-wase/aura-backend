@@ -16,7 +16,6 @@ export const getCurrentUser = async (userId) => {
   return user;
 };
 
-
 // =====================================================
 // GET USER BY ID
 // =====================================================
@@ -32,7 +31,6 @@ export const getUserById = async (userId) => {
 
   return user;
 };
-
 
 // =====================================================
 // UPDATE USER PROFILE
@@ -101,7 +99,6 @@ export const updateUserProfile = async (
   return user;
 };
 
-
 // =====================================================
 // UPDATE PRIVACY SETTINGS
 // =====================================================
@@ -146,7 +143,6 @@ export const updatePrivacySettings = async (
   return user;
 };
 
-
 // =====================================================
 // UPDATE ONLINE STATUS
 // =====================================================
@@ -156,8 +152,14 @@ export const updateOnlineStatus = async (
   isOnline
 ) => {
   const updateData = {
-    isOnline,
+    isOnline: Boolean(isOnline),
   };
+
+  // ---------------------------------------------------
+  // IMPORTANT:
+  // lastSeen is updated ONLY when going offline.
+  // When coming online, the previous lastSeen is kept.
+  // ---------------------------------------------------
 
   if (!isOnline) {
     updateData.lastSeen = new Date();
@@ -170,6 +172,7 @@ export const updateOnlineStatus = async (
     },
     {
       new: true,
+      runValidators: true,
     }
   ).select(
     "_id name username isOnline lastSeen"
@@ -181,7 +184,6 @@ export const updateOnlineStatus = async (
 
   return user;
 };
-
 
 // =====================================================
 // SEARCH USERS
@@ -237,4 +239,4 @@ export const searchUsers = async (
     .limit(20);
 
   return users;
-};
+}; 

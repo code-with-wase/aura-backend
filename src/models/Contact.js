@@ -62,7 +62,7 @@ contactSchema.index({
 contactSchema.index({
   owner: 1,
   isBlocked: 1,
-  createdAt: -1,
+  createdAt: -1, 
 });
 
 const Contact = mongoose.model("Contact", contactSchema);

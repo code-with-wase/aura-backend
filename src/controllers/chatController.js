@@ -176,6 +176,6 @@ export const leave = async (
       "You left the chat successfully"
     );
   } catch (error) {
-    next(error);
+    next(error); 
   }
 };

@@ -158,6 +158,6 @@ router.patch(
   "/:groupId/mute",
   validate(muteGroupSchema),
   updateMuteStatus
-);
+); 
 
 export default router;

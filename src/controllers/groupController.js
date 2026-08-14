@@ -30,7 +30,7 @@ export const createGroup = async (
       req.validatedData?.body ||
       req.body;
 
-    const group =
+    const result =
       await createGroupService({
         userId: req.user._id,
         ...body,
@@ -40,9 +40,7 @@ export const createGroup = async (
       res,
       201,
       "Group created successfully",
-      {
-        group,
-      }
+      result
     );
   } catch (error) {
     return next(error);

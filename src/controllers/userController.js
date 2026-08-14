@@ -187,5 +187,5 @@ export const search = async (
     );
   } catch (error) {
     return next(error);
-  }
+  } 
 };

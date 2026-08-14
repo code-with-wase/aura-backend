@@ -89,7 +89,7 @@ const chatSchema = new mongoose.Schema(
       default: null,
     },
 
-    lastMessageAt: {
+    lastMessageAt: { 
       type: Date,
       default: null,
     },

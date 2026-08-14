@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 
 import Group from "../models/Group.js";
 import User from "../models/User.js";
+import Chat from "../models/Chat.js";
 
 // =====================================================
 // HELPERS
@@ -30,6 +31,18 @@ const findGroup = async (groupId) => {
   }
 
   return group;
+};
+
+// =====================================================
+// GET GROUP CHAT
+// =====================================================
+
+const findGroupChat = async (groupId) => {
+  return Chat.findOne({
+    type: "group",
+    group: groupId,
+    isActive: true,
+  });
 };
 
 // =====================================================
@@ -92,6 +105,22 @@ const populateGroup = async (group) => {
 };
 
 // =====================================================
+// ATTACH CHAT ID
+// =====================================================
+
+const attachChatId = async (group) => {
+  const chat = await findGroupChat(group._id);
+
+  const groupObject = group.toObject
+    ? group.toObject()
+    : group;
+
+  groupObject.chatId = chat?._id || null;
+
+  return groupObject;
+};
+
+// =====================================================
 // CREATE GROUP
 // =====================================================
 
@@ -134,7 +163,7 @@ export const createGroup = async ({
 
   const now = new Date();
 
-  const members = uniqueIds.map((id, index) => ({
+  const members = uniqueIds.map((id) => ({
     user: id,
     role:
       id === userId.toString()
@@ -145,20 +174,61 @@ export const createGroup = async ({
     isMuted: false,
   }));
 
-  const group = await Group.create({
-    name: name.trim(),
-    description:
-      description?.trim() || null,
-    avatar: avatar || null,
-    avatarPublicId:
-      avatarPublicId || null,
-    createdBy: userId,
-    members,
-  });
+  let group = null;
 
-  await populateGroup(group);
+  try {
+    // =================================================
+    // CREATE GROUP
+    // =================================================
 
-  return group;
+    group = await Group.create({
+      name: name.trim(),
+      description:
+        description?.trim() || null,
+      avatar: avatar || null,
+      avatarPublicId:
+        avatarPublicId || null,
+      createdBy: userId,
+      members,
+    });
+
+    // =================================================
+    // CREATE GROUP CHAT
+    // =================================================
+
+    const chatParticipants = members.map((member) => ({
+      user: member.user,
+      isAdmin: member.role === "admin",
+      isMuted: member.isMuted || false,
+      isArchived: false,
+      isPinned: false,
+      unreadCount: 0,
+      lastReadAt: null,
+      joinedAt: member.joinedAt,
+      leftAt: null,
+    }));
+
+    const chat = await Chat.create({
+      type: "group",
+      group: group._id,
+      participants: chatParticipants,
+      isActive: true,
+    });
+
+    await populateGroup(group);
+
+    return {
+      group: await attachChatId(group),
+      chat,
+    };
+  } catch (error) {
+    // Rollback group if chat creation fails
+    if (group?._id) {
+      await Group.findByIdAndDelete(group._id);
+    }
+
+    throw error;
+  }
 };
 
 // =====================================================
@@ -189,7 +259,9 @@ export const getGroups = async ({
       select: "_id name username avatar",
     });
 
-  return groups;
+  return Promise.all(
+    groups.map((group) => attachChatId(group))
+  );
 };
 
 // =====================================================
@@ -206,7 +278,7 @@ export const getGroup = async ({
 
   await populateGroup(group);
 
-  return group;
+  return attachChatId(group);
 };
 
 // =====================================================
@@ -259,7 +331,7 @@ export const updateGroup = async ({
 
   await populateGroup(group);
 
-  return group;
+  return attachChatId(group);
 };
 
 // =====================================================
@@ -341,9 +413,33 @@ export const addMembers = async ({
 
   await group.save();
 
+  // =================================================
+  // SYNC CHAT PARTICIPANTS
+  // =================================================
+
+  const chat = await findGroupChat(group._id);
+
+  if (chat) {
+    for (const id of newIds) {
+      chat.participants.push({
+        user: id,
+        isAdmin: false,
+        isMuted: false,
+        isArchived: false,
+        isPinned: false,
+        unreadCount: 0,
+        lastReadAt: null,
+        joinedAt: now,
+        leftAt: null,
+      });
+    }
+
+    await chat.save();
+  }
+
   await populateGroup(group);
 
-  return group;
+  return attachChatId(group);
 };
 
 // =====================================================
@@ -371,7 +467,6 @@ export const removeMember = async ({
     );
   }
 
-  // User cannot remove himself using this API.
   if (
     userId.toString() ===
     memberId.toString()
@@ -391,7 +486,6 @@ export const removeMember = async ({
     }
   }
 
-  // Member cannot remove admin.
   if (
     requester.role !== "admin" &&
     target.role === "admin"
@@ -405,9 +499,30 @@ export const removeMember = async ({
 
   await group.save();
 
+  // =================================================
+  // SYNC CHAT PARTICIPANT
+  // =================================================
+
+  const chat = await findGroupChat(group._id);
+
+  if (chat) {
+    const chatMember = chat.participants.find(
+      (participant) =>
+        participant.user.toString() ===
+        memberId.toString() &&
+        !participant.leftAt
+    );
+
+    if (chatMember) {
+      chatMember.leftAt = new Date();
+    }
+
+    await chat.save();
+  }
+
   await populateGroup(group);
 
-  return group;
+  return attachChatId(group);
 };
 
 // =====================================================
@@ -434,14 +549,38 @@ export const leaveGroup = async ({
       (item) => !item.leftAt
     );
 
+  // =================================================
+  // LAST MEMBER
+  // =================================================
+
   if (activeMembers.length === 1) {
     group.isActive = false;
     member.leftAt = new Date();
 
     await group.save();
 
+    const chat = await findGroupChat(group._id);
+
+    if (chat) {
+      const chatMember =
+        chat.participants.find(
+          (participant) =>
+            participant.user.toString() ===
+            userId.toString()
+        );
+
+      if (chatMember) {
+        chatMember.leftAt = new Date();
+      }
+
+      chat.isActive = false;
+
+      await chat.save();
+    }
+
     return {
       groupId: group._id,
+      chatId: chat?._id || null,
       left: true,
       groupDeactivated: true,
     };
@@ -453,8 +592,12 @@ export const leaveGroup = async ({
   member.leftAt = new Date();
   member.role = "member";
 
-  // If leaving admin is the only admin,
-  // promote the oldest active member.
+  // =================================================
+  // PROMOTE NEXT ADMIN
+  // =================================================
+
+  let nextAdminUserId = null;
+
   if (wasAdmin) {
     const remainingAdmins =
       group.members.filter(
@@ -480,14 +623,52 @@ export const leaveGroup = async ({
 
       if (nextAdmin) {
         nextAdmin.role = "admin";
+        nextAdminUserId = nextAdmin.user;
       }
     }
   }
 
   await group.save();
 
+  // =================================================
+  // SYNC CHAT
+  // =================================================
+
+  const chat = await findGroupChat(group._id);
+
+  if (chat) {
+    const chatMember =
+      chat.participants.find(
+        (participant) =>
+          participant.user.toString() ===
+          userId.toString()
+      );
+
+    if (chatMember) {
+      chatMember.leftAt = new Date();
+      chatMember.isAdmin = false;
+    }
+
+    if (nextAdminUserId) {
+      const nextAdminChatMember =
+        chat.participants.find(
+          (participant) =>
+            participant.user.toString() ===
+            nextAdminUserId.toString() &&
+            !participant.leftAt
+        );
+
+      if (nextAdminChatMember) {
+        nextAdminChatMember.isAdmin = true;
+      }
+    }
+
+    await chat.save();
+  }
+
   return {
     groupId: group._id,
+    chatId: chat?._id || null,
     left: true,
     groupDeactivated: false,
   };
@@ -525,9 +706,31 @@ export const promoteMember = async ({
 
   await group.save();
 
+  // =================================================
+  // SYNC CHAT ADMIN
+  // =================================================
+
+  const chat = await findGroupChat(group._id);
+
+  if (chat) {
+    const chatMember =
+      chat.participants.find(
+        (participant) =>
+          participant.user.toString() ===
+            memberId.toString() &&
+          !participant.leftAt
+      );
+
+    if (chatMember) {
+      chatMember.isAdmin = true;
+    }
+
+    await chat.save();
+  }
+
   await populateGroup(group);
 
-  return group;
+  return attachChatId(group);
 };
 
 // =====================================================
@@ -584,9 +787,31 @@ export const demoteMember = async ({
 
   await group.save();
 
+  // =================================================
+  // SYNC CHAT ADMIN
+  // =================================================
+
+  const chat = await findGroupChat(group._id);
+
+  if (chat) {
+    const chatMember =
+      chat.participants.find(
+        (participant) =>
+          participant.user.toString() ===
+            memberId.toString() &&
+          !participant.leftAt
+      );
+
+    if (chatMember) {
+      chatMember.isAdmin = false;
+    }
+
+    await chat.save();
+  }
+
   await populateGroup(group);
 
-  return group;
+  return attachChatId(group);
 };
 
 // =====================================================
@@ -637,7 +862,7 @@ export const updateGroupSettings = async ({
 
   await populateGroup(group);
 
-  return group;
+  return attachChatId(group);
 };
 
 // =====================================================
@@ -658,8 +883,32 @@ export const updateMuteStatus = async ({
 
   await group.save();
 
+  // =================================================
+  // SYNC CHAT MUTE
+  // =================================================
+
+  const chat = await findGroupChat(group._id);
+
+  if (chat) {
+    const chatMember =
+      chat.participants.find(
+        (participant) =>
+          participant.user.toString() ===
+          userId.toString() &&
+          !participant.leftAt
+      );
+
+    if (chatMember) {
+      chatMember.isMuted =
+        Boolean(isMuted);
+    }
+
+    await chat.save();
+  }
+
   return {
     groupId: group._id,
+    chatId: chat?._id || null,
     userId,
     isMuted: member.isMuted,
   };
